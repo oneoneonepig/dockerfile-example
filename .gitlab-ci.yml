@@ -27,4 +27,4 @@ nginx:test:
   script:
   - docker run -d --name test $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   - export OUTPUT=$(docker exec test curl -sSfL localhost)
-  - test "$OUTPUT" == "It works!" || echo $OUTPUT && exit 1 
+  - test "$OUTPUT" == "It works!" || (echo $OUTPUT && exit 1)
