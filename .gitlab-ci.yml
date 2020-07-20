@@ -1,6 +1,7 @@
 stages:
 - build
 - test
+- deploy
 
 default:
   services: 
@@ -20,9 +21,22 @@ nginx:build:
 
 nginx:test:
   stage: test
-  needs: ["nginx:build"]
+  needs: 
+  - nginx:build
   image: docker
   script:
   - docker run -d --name test $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   - export OUTPUT=$(docker exec test curl -sSfL localhost)
   - test "$OUTPUT" == "It works!" || (echo $OUTPUT && exit 1)
+
+nginx:deploy:
+  stage: deploy
+  needs:
+  - nginx:test
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base
+  script:
+  - curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+  - chmod +x ./kubectl
+  - aws eks update-kubeconfig --name $CLUSTER_NAME
+  - sed -i "s/_IMAGE_/$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA/g" nginx/kubernetes/deploy.yaml
+  - kubectl apply -f nginx/kubernetes/deploy.yaml
