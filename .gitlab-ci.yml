@@ -2,7 +2,7 @@ stages:
 - build
 - test
 
-build app:
+nginx:build:
   stage: build
   image: docker
   services:
@@ -16,8 +16,9 @@ build app:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
 
-test app:
-  stage: build
+nginx:test:
+  stage: test
+  needs: ["nginx:build"]
   image: docker
   services:
   - docker:dind
