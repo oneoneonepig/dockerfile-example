@@ -38,5 +38,5 @@ nginx:deploy:
   - curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
   - chmod +x ./kubectl
   - aws eks update-kubeconfig --name $CLUSTER_NAME
-  - sed -i "s/_IMAGE_/$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA/g" nginx/kubernetes/deploy.yaml
-  - kubectl apply -f nginx/kubernetes/deploy.yaml
+  - sed -i "s,_IMAGE_,$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA,g" nginx/kubernetes/deploy.yaml
+  - ./kubectl apply -f nginx/kubernetes/deploy.yaml
