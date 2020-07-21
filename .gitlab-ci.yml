@@ -37,7 +37,7 @@ nginx:test:
     DOCKER_HOST: "tcp://docker:2375"
     IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
   script:
-  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID && sleep 3
   - export TEST_OUTPUT=$(docker exec test curl -sSfL localhost)
   - test "$TEST_OUTPUT" == "$CORRECT_OUTPUT" || (echo $OUTPUT && exit 1)
 
@@ -86,7 +86,7 @@ python:test:
     DOCKER_HOST: "tcp://docker:2375"
     IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/python
   script:
-  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID && sleep 3
   - export TEST_OUTPUT=$(docker exec test curl -sSfL localhost)
   - test "$TEST_OUTPUT" == "$CORRECT_OUTPUT" || (echo $OUTPUT && exit 1)
 
