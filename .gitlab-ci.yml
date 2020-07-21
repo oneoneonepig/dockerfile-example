@@ -3,29 +3,36 @@ stages:
 - test
 - deploy
 
-default:
-  services: 
-  - docker:dind
-variables:
-  DOCKER_HOST: "tcp://docker:2375"
-
 nginx:build:
   stage: build
   image: docker
+  services: 
+  - docker:dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
   script:
   - cd nginx
-  - docker build . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-  - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-  - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  - docker build . -t $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA
+  - docker tag $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker tag $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA $IMAGE_TAG_BASE:latest
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - docker push $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA
+  - docker push $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker push $IMAGE_TAG_BASE:latest
 
 nginx:test:
   stage: test
   needs: 
   - nginx:build
   image: docker
+  services: 
+  - docker:dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
   script:
-  - docker run -d --name test $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  - docker run -d --name test $CI_REGISTRY_IMAGE/nginx:$CI_PIPELINE_ID
   - export OUTPUT=$(docker exec test curl -sSfL localhost)
   - test "$OUTPUT" == "It works!" || (echo $OUTPUT && exit 1)
 
@@ -34,9 +41,11 @@ nginx:deploy:
   needs:
   - nginx:test
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base
+  variables:
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
   script:
   - curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
   - chmod +x ./kubectl
   - aws eks update-kubeconfig --name $CLUSTER_NAME
-  - sed -i "s,_IMAGE_,$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA,g" nginx/kubernetes/deploy.yaml
+  - sed -i "s,_IMAGE_,$IMAGE_TAG_BASE:$CI_PIPELINE_ID,g" nginx/kubernetes/deploy.yaml
   - ./kubectl apply -f nginx/kubernetes/deploy.yaml
