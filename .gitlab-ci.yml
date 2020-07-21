@@ -6,10 +6,12 @@ stages:
 variables:
   CORRECT_OUTPUT: "Hello, world!"
 
+# nginx
+
 nginx:build:
   stage: build
   image: docker
-  services: 
+  services:
   - docker:dind
   variables:
     DOCKER_HOST: "tcp://docker:2375"
@@ -29,13 +31,13 @@ nginx:test:
   needs: 
   - nginx:build
   image: docker
-  services: 
+  services:
   - docker:dind
   variables:
     DOCKER_HOST: "tcp://docker:2375"
     IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
   script:
-  - docker run -d --name test $CI_REGISTRY_IMAGE/nginx:$CI_PIPELINE_ID
+  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID
   - export TEST_OUTPUT=$(docker exec test curl -sSfL localhost)
   - test "$TEST_OUTPUT" == "$CORRECT_OUTPUT" || (echo $OUTPUT && exit 1)
 
@@ -52,3 +54,52 @@ nginx:deploy:
   - aws eks update-kubeconfig --name $CLUSTER_NAME
   - sed -i "s,_IMAGE_,$IMAGE_TAG_BASE:$CI_PIPELINE_ID,g" nginx/kubernetes/deploy.yaml
   - ./kubectl apply -f nginx/kubernetes/deploy.yaml
+
+# python
+
+python:build:
+  stage: build
+  image: docker
+  services:
+  - docker:dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/python
+  script:
+  - cd python
+  - docker build . -t $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA
+  - docker tag $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker tag $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA $IMAGE_TAG_BASE:latest
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - docker push $IMAGE_TAG_BASE:$CI_COMMIT_SHORT_SHA
+  - docker push $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - docker push $IMAGE_TAG_BASE:latest
+
+python:test:
+  stage: test
+  needs:
+  - python:build
+  image: docker
+  services:
+  - docker:dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/python
+  script:
+  - docker run -d --name test $IMAGE_TAG_BASE:$CI_PIPELINE_ID
+  - export TEST_OUTPUT=$(docker exec test curl -sSfL localhost)
+  - test "$TEST_OUTPUT" == "$CORRECT_OUTPUT" || (echo $OUTPUT && exit 1)
+
+python:deploy:
+  stage: deploy
+  needs:
+  - python:test
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base
+  variables:
+    IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/python
+  script:
+  - curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+  - chmod +x ./kubectl
+  - aws eks update-kubeconfig --name $CLUSTER_NAME
+  - sed -i "s,_IMAGE_,$IMAGE_TAG_BASE:$CI_PIPELINE_ID,g" python/kubernetes/deploy.yaml
+  - ./kubectl apply -f python/kubernetes/deploy.yaml
