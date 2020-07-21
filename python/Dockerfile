@@ -1,4 +1,4 @@
 FROM python:3
-ADD script.py /
-RUN pip install camelcase
-CMD [ "python", "/script.py" ]
+WORKDIR /app
+COPY . .
+CMD [ "python", "script.py" ]
