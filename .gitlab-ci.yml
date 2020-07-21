@@ -45,9 +45,9 @@ nginx:deploy:
   stage: deploy
   needs:
   - nginx:test
-  rules:
-  - if: '$CI_PIPELINE_SOURCE == "external_pull_request_event"'
-    when: never
+#  rules:
+#  - if: '$CI_PIPELINE_SOURCE == "external_pull_request_event"'
+#    when: never
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base
   variables:
     IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/nginx
@@ -97,9 +97,9 @@ python:deploy:
   stage: deploy
   needs:
   - python:test
-  rules:
-  - if: '$CI_PIPELINE_SOURCE == "external_pull_request_event"'
-    when: never
+#  rules:
+#  - if: '$CI_PIPELINE_SOURCE == "external_pull_request_event"'
+#    when: never
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base
   variables:
     IMAGE_TAG_BASE: $CI_REGISTRY_IMAGE/python
