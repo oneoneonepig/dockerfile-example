@@ -5,6 +5,6 @@ COPY . .
 RUN go get -d ./...
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o app .
 
-FROM alpine:latest AS runtime
+FROM curlimages/curl:latest AS runtime
 COPY --from=build /go/src/main/app .
 CMD ["./app"]
